@@ -1,8 +1,8 @@
 int SensorFiller = A0; 
 
-byte pinpurge = 8;
-byte pinbuch = 9;
-byte pinc02 = 10;
+byte pinc02 = 9;
+byte pinbuch = 8;
+byte pinpurge = 10;
 byte FillerVertical = 12;
 byte pinactuator = 13 ;
  
@@ -42,16 +42,16 @@ public:
     digitalWrite(pinvertical, LOW);      
  }
  void c02on(){
-    digitalWrite(pinc02, HIGH); 
+    digitalWrite(pinc02, LOW); 
  }
  void c02off(){
-    digitalWrite(pinc02, LOW);
+    digitalWrite(pinc02, HIGH);
  }
  void buchon(){
-    digitalWrite(pinbuch, HIGH);
+    digitalWrite(pinbuch, LOW);
  }
  void buchoff(){
-    digitalWrite(pinbuch, LOW);
+    digitalWrite(pinbuch, HIGH);
  }
  void purgeon(){
     digitalWrite(pinpurge, HIGH);
@@ -107,12 +107,12 @@ class Actuator {
 
   private: 
     byte bot_det = 0 ; 
-    byte pinactuator =13; 
+    byte pinactuator; 
     int FillerValue_1 = 700; 
     int FillerValue = 0;
 
   public: 
-    actuator() { 
+    Actuator(byte pinactuator) { 
       this->pinactuator = pinactuator;
       pinMode(pinactuator, OUTPUT); 
     }
@@ -129,11 +129,12 @@ class Actuator {
 
 Filler filler=Filler(pinc02, pinbuch, pinpurge, FillerVertical); 
 Bottle_detector bottle_detector=Bottle_detector(SensorFiller); 
-Actuator actuator=Actuator();
+Actuator actuator=Actuator(13);
 
 void setup() { // put your setup code here, to run once: Serial.begin(9600);
-
-  actuator.close();
+  filler.c02off();
+  filler.buchoff();
+  actuator.close(); 
   filler.up(); }
 
 void loop() {
@@ -148,9 +149,18 @@ void loop() {
     }
   else{ 
     Serial.println("bottle"); 
+   
+    
     delay(1000);
     filler.down();
-    delay(5000); 
+    delay(500);
+    filler.c02on();
+    delay(2000);
+    filler.c02off(); 
+    filler.buchon(); 
+    delay(55000);
+    filler.buchoff();
+    delay(5000);
     filler.up(); 
     delay(1000);
     actuator.open(); 
