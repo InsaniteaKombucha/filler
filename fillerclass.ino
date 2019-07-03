@@ -1,6 +1,7 @@
 int SensorFirstBottle = A0;
 int SensorLastBottle = A3;
-int SensorCounter = A1;
+const byte SensorCounterPin = 2;
+
 byte pinactuator = 13 ;
 
 byte pinc02_1 = 7 ;
@@ -52,35 +53,34 @@ class Head{
      void purgeoff(){
       digitalWrite(pinpurge, LOW);
      }
-};
 
+};
 
 /*Filler class definition */
 class Filler {
 
   private:
-    byte pinvertical;
+    byte pinfiller;
 
-    
+   
   public: 
     Filler(Head head1, Head head2, byte pinfiller) {
       
-      this->pinvertical = pinvertical;
+      this->pinfiller = pinfiller;
      // this->head1 = head1;
    
 
-      pinMode(pinvertical, OUTPUT);
+      pinMode(pinfiller, OUTPUT);
     }
       
      void up(){
-      digitalWrite(pinvertical, HIGH);      
+      digitalWrite(pinfiller, HIGH);      
      }
      void down(){
-      digitalWrite(pinvertical, LOW);      
+      digitalWrite(pinfiller, LOW);      
      } 
      void start_heads_cycle(){
       //head1.c02on();
-      
      }
 
 };
@@ -105,15 +105,19 @@ class Bottle_counter {
      void reset_bottle(){
         bot_count=0;       
       } 
-      
-     byte on(){
+
+     void increase_count(){
+        bot_count ++;
+     }
+     /*byte on(){
      while(bot_count<4){
       duration = pulseIn(pinsensor, HIGH);
       if (duration >200 && duration < 2000){
         bot_count ++; 
+        Serial.println("bottle");
       }
-     }    
-   }
+     } */   
+   
 };
 
 
@@ -166,22 +170,24 @@ class Actuator {
 
   private:
     byte bot_det = 0 ;
-    byte pinactuator =13;
+    byte pinactuator ;
     int FillerValue_1 = 700;
     int FillerValue = 0;    
 
   public: 
-    actuator() {
+    Actuator(byte pinactuator) {
       this->pinactuator = pinactuator;   
       pinMode(pinactuator, OUTPUT);
       }
       
      void open() {
-      digitalWrite(pinactuator, LOW);       
+      digitalWrite(pinactuator, LOW);  
+      Serial.println("actuator open");     
      }
       
      void close() {
       digitalWrite(pinactuator, HIGH);
+      Serial.println("actuator close");
        
      }
 };
@@ -190,22 +196,43 @@ class Actuator {
 void start_cycle_heads(Head head1, Head head2){
     head1.c02on();
     head2.c02on();
+    Serial.println("c02 on");
     delay(2000);
     head1.c02off();
     head2.c02off();
-    
+    Serial.println("c02 off");
     head1.buchon();
     head2.buchon();
+    Serial.println("buch on");
     delay(30000);
     head1.buchoff();
     head2.buchoff();
+    Serial.println("buch off");
+
   
 }
 
+void increase_count(){
+    Serial.println("one more bottle");
+    BottleCounter ++;
+    Serial.println(BottleCounter);
+
+}
+
+void bottle_interrupt_handler(){
+ static unsigned long last_interrupt_time = 0;
+ unsigned long interrupt_time = millis();
+ // If interrupts come faster than 200ms, assume it's a bounce and ignore
+ if (interrupt_time - last_interrupt_time > 1000)
+ {
+  increase_count();
+ }
+ last_interrupt_time = interrupt_time;
+} 
+
  
- 
- Actuator actuator=Actuator();
- Bottle_counter bottle_counter=Bottle_counter(SensorCounter);
+ Actuator actuator=Actuator(pinactuator);
+ Bottle_counter bottle_counter=Bottle_counter(SensorCounterPin);
 
  Head head1=Head(pinc02_1, pinbuch_1, pinpurge_1); 
  Head head2=Head(pinc02_2, pinbuch_2, pinpurge_2); 
@@ -217,20 +244,39 @@ void start_cycle_heads(Head head1, Head head2){
 
 void setup() {
   // put your setup code here, to run once:
-Serial.begin(9600);
- 
- actuator.close();
- filler.up();
- bottle_counter.on();
+  Serial.begin(9600);
+  pinMode(SensorCounterPin, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(SensorCounterPin), bottle_interrupt_handler, CHANGE);
+
+  actuator.close();
+  filler.up();
+  //bottle_counter.on();
+  Serial.println("set up finished");
 }
 
 void loop() {
   
   // put your main code here, to run repeatedly:
 
+  Serial.println("iteration on loop");
+ 
+  delay (1000);
+  if(BottleCounter == 4){
+    Serial.println("Start filling cycle");
+    delay(2000);
+    filler.down();
+    start_cycle_heads(head1, head2);
+    filler.up();
+    delay(1000);   
+    actuator.open();
+    delay(2000);
+    first_bottle_detector.reset_bottle();
+    last_bottle_detector.reset_bottle();
+    actuator.close();
+    delay(2000);
+    BottleCounter = 0;  
 
-  if(bottle_counter.num_bottle() == 3){
-  
+  }/*  
       first_bottle_detector.on();
       last_bottle_detector.on();
 
@@ -254,4 +300,5 @@ void loop() {
       }  
      
   }
+  */
 }
