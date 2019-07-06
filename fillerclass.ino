@@ -1,17 +1,17 @@
 int SensorFirstBottle = A0;
-int SensorLastBottle = A3;
+int SensorLastBottle = A1;
 const byte SensorCounterPin = 2;
+byte pinConveyor = 8;
 
-byte pinactuator = 13 ;
-int  LastBottlePin = 7;
+byte pinactuator = 9 ;
 
-byte pinc02_1 = 7 ;
-byte pinbuch_1 = 8 ;
-byte pinpurge_1 = 9 ;
+byte pinc02_1 = 3 ;
+byte pinbuch_1 = 4 ;
+byte pinpurge_1 = 5 ;
 
-byte pinc02_2 = 4 ;
-byte pinbuch_2 = 5 ;
-byte pinpurge_2 = 6 ;
+byte pinc02_2 = 6 ;
+byte pinbuch_2 = 7 ;
+byte pinpurge_2 = 10 ;
 
 int FillerVertical = 12; 
 
@@ -63,15 +63,12 @@ class Filler {
 
   private:
     byte pinfiller;
-
    
   public: 
     Filler(Head head1, Head head2, byte pinfiller) {
       
       this->pinfiller = pinfiller;
      // this->head1 = head1;
-   
-
       pinMode(pinfiller, OUTPUT);
     }
       
@@ -84,36 +81,29 @@ class Filler {
      void start_heads_cycle(){
       //head1.c02on();
      }
-
 };
 
-/*Bottle_counter class definition */
-class Bottle_counter {
+/*Conveyor class definition */
+class Conveyor {
 
   private:
-    byte bot_count = 0 ;
-    byte pinsensor;
-    long duration;
- 
-  public: 
-    Bottle_counter(byte pinsensor) {
-      this->pinsensor = pinsensor;   
-      pinMode(pinsensor, INPUT);
-      }
-      
-     byte num_bottle() {
-      return bot_count;       
-     }
-     void reset_bottle(){
-        bot_count=0;       
-      } 
-
-     void increase_count(){
-        bot_count ++;
-     }
+    byte pinConveyor;
    
-};
+  public: 
+    Conveyor( byte pinConveyor) {
+      
+      this->pinConveyor = pinConveyor;
+      pinMode(pinConveyor, OUTPUT);
+    }
+      
+     void on(){
+      digitalWrite(pinConveyor, HIGH);      
+     }
+     void off(){
+      digitalWrite(pinConveyor, LOW);      
+     } 
 
+};
 
 /*Bottle_detector class definition */
 class Bottle_detector {
@@ -179,8 +169,7 @@ class Actuator {
       
      void close() {
       digitalWrite(pinactuator, HIGH);
-      Serial.println("actuator close");
-       
+      Serial.println("actuator close");      
      }
 };
 
@@ -218,38 +207,32 @@ void increase_last_count(){
 }
 
 void bottle_interrupt_handler(){
- static unsigned long last_interrupt_time = 0;
- unsigned long interrupt_time = millis();
- // If interrupts come faster than 1000ms, assume it's a bounce and ignore
- if (interrupt_time - last_interrupt_time > 1000)
- {
-  increase_count();
- }
- last_interrupt_time = interrupt_time;
+    static unsigned long last_interrupt_time = 0;
+    unsigned long interrupt_time = millis();
+    // If interrupts come faster than 1000ms, assume it's a bounce and ignore
+    if (interrupt_time - last_interrupt_time > 1000)
+    {
+      increase_count();
+    }
+    last_interrupt_time = interrupt_time;
 } 
 
 
 void last_bottle_handler(){
-  static unsigned long last_interrupt_time = 0;
- unsigned long interrupt_time = millis();
- Serial.println("I am inside the handler");
+     static unsigned long last_interrupt_time = 0;
+     unsigned long interrupt_time = millis();
+     Serial.println("I am inside the handler");
  
- // If interrupts come faster than 1000ms, assume it's a bounce and ignore
- if (interrupt_time - last_interrupt_time > 1000)
- {
-  increase_last_count();
- }
- last_interrupt_time = interrupt_time;
+     // If interrupts come faster than 1000ms, assume it's a bounce and ignore
+     if (interrupt_time - last_interrupt_time > 1000)
+     {
+       increase_last_count();
+     }
+     last_interrupt_time = interrupt_time;
 } 
-
-
-
-
-
 
  
  Actuator actuator=Actuator(pinactuator);
- Bottle_counter bottle_counter=Bottle_counter(SensorCounterPin);
 
  Head head1=Head(pinc02_1, pinbuch_1, pinpurge_1); 
  Head head2=Head(pinc02_2, pinbuch_2, pinpurge_2); 
@@ -257,8 +240,7 @@ void last_bottle_handler(){
  Filler filler=Filler(head1,head2, FillerVertical);
  
  Bottle_detector first_bottle_detector=Bottle_detector(SensorFirstBottle);
- Bottle_detector last_bottle_detector=Bottle_detector(SensorLastBottle);
-
+ Conveyor conveyor=Conveyor(pinConveyor);
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
@@ -268,34 +250,31 @@ void setup() {
   pinMode(SensorCounterPin, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(SensorCounterPin), bottle_interrupt_handler, CHANGE);
 
-  //pinMode(LastBottlePin, INPUT_PULLUP);
-  pinMode(7, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(7), last_bottle_handler, CHANGE);
+  pinMode(SensorLastBottle, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(SensorLastBottle), last_bottle_handler, CHANGE);
 
   actuator.open();
   delay(3000); 
   actuator.close();
   filler.up();
   Serial.println("set up finished");
-
-
   
 }
 
-void loop() {
- //   Actuator actuator=Actuator(13);
-  
+void loop() {  
   // put your main code here, to run repeatedly:
 
   Serial.println("iteration on loop");
  
   delay (1000);
-  if(BottleCounter == 4 && lastBottleCounter ==4 && first_bottle_detector.is_bottle() ==1){
+  if(BottleCounter == 4 ){
     Serial.println("Start filling cycle");
     delay(2000);
+    conveyor.off();
     filler.down();
     start_cycle_heads(head1, head2);
     filler.up();
+    conveyor.on();
     delay(1000);   
     actuator.open();
     delay(2000);
@@ -306,29 +285,5 @@ void loop() {
     BottleCounter = 0;  
     lastBottleCounter=0;
 
-  }/*  
-      first_bottle_detector.on();
-      last_bottle_detector.on();
-
-      if(first_bottle_detector.is_bottle() && last_bottle_detector.is_bottle()){
-        Serial.println("bottle");
-        delay(2000);
-        filler.down();
-        start_cycle_heads(head1, head2);
-        filler.up();
-        delay(1000);   
-        actuator.open();
-        Serial.println("actuator open");
-        delay(2000);
-        first_bottle_detector.reset_bottle();
-        last_bottle_detector.reset_bottle();
-        actuator.close();
-        Serial.println("actuator closed");
-      }
-      else{
-        Serial.println("waiting for bottle");
-      }  
-     
   }
-  */
 }
