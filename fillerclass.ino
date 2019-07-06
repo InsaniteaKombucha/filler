@@ -97,10 +97,12 @@ class Conveyor {
     }
       
      void on(){
-      digitalWrite(pinConveyor, HIGH);      
+      digitalWrite(pinConveyor, HIGH);  
+      Serial.println("conveyor on");        
      }
      void off(){
-      digitalWrite(pinConveyor, LOW);      
+      digitalWrite(pinConveyor, LOW);            
+      Serial.println("conveyor off");     
      } 
 
 };
