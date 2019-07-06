@@ -1,12 +1,12 @@
 int SensorFirstBottle = A0;
-int SensorLastBottle = A1;
-const byte SensorCounterPin = 2;
-byte pinConveyor = 8;
+int SensorLastBottle = 2;
+//const byte SensorCounterPin = A3;
+byte pinConveyor = 3;
 
-byte pinactuator = 9 ;
+byte pinactuator = 13 ;
 
-byte pinc02_1 = 3 ;
-byte pinbuch_1 = 4 ;
+byte pinc02_1 = 8 ;
+byte pinbuch_1 = 9 ;
 byte pinpurge_1 = 5 ;
 
 byte pinc02_2 = 6 ;
@@ -187,7 +187,7 @@ void start_cycle_heads(Head head1, Head head2){
     head1.buchon();
     head2.buchon();
     Serial.println("buch on");
-    delay(30000);
+    delay(10000);
     head1.buchoff();
     head2.buchoff();
     Serial.println("buch off");
@@ -195,9 +195,9 @@ void start_cycle_heads(Head head1, Head head2){
 }
 
 void increase_count(){
-    Serial.println("one more bottle");
+   // Serial.println("one more bottle");
     BottleCounter ++;
-    Serial.println(BottleCounter);
+   // Serial.println(BottleCounter);
 
 }
 
@@ -251,16 +251,19 @@ void setup() {
 
   pinMode(pinactuator, OUTPUT);
 
-  pinMode(SensorCounterPin, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(SensorCounterPin), bottle_interrupt_handler, CHANGE);
-
   pinMode(SensorLastBottle, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(SensorLastBottle), last_bottle_handler, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(SensorLastBottle), bottle_interrupt_handler, CHANGE);
 
-  actuator.open();
-  delay(3000); 
+  //pinMode(SensorLastBottle, INPUT_PULLUP);
+  //attachInterrupt(digitalPinToInterrupt(SensorLastBottle), last_bottle_handler, CHANGE);
+  conveyor.on();
+
   actuator.close();
+  delay(3000); 
+ 
   filler.up();
+  lastBottleCounter = 0;
+
   Serial.println("set up finished");
   
 }
@@ -268,11 +271,13 @@ void setup() {
 void loop() {  
   // put your main code here, to run repeatedly:
 
-  Serial.println("iteration on loop");
+  Serial.println("BOTTLE #");
+  Serial.println(BottleCounter);
  
   delay (1000);
   if(BottleCounter == 4 ){
     Serial.println("Start filling cycle");
+   
     delay(2000);
     conveyor.off();
     filler.down();
@@ -282,8 +287,6 @@ void loop() {
     delay(1000);   
     actuator.open();
     delay(2000);
-    //first_bottle_detector.reset_bottle();
-    //last_bottle_detector.reset_bottle();
     actuator.close();
     delay(2000);
     BottleCounter = 0;  
