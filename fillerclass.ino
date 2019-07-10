@@ -1,5 +1,7 @@
 int SensorFirstBottle = A0;
-int SensorLastBottle = 2;
+int SensorLastBottle = A1;
+
+int SensorCounterBottle = 2;
 
 int BottlesInFiller = 3;
 
@@ -193,17 +195,9 @@ void start_cycle_heads(Head head1, Head head2){
 }
 
 void increase_count(){
-   // Serial.println("one more bottle");
     BottleCounter ++;
-   // Serial.println(BottleCounter);
-
 }
 
-void increase_last_count(){
-    lastBottleCounter ++;
-    Serial.println(BottleCounter);
-
-}
 
 void bottle_interrupt_handler(){
     static unsigned long last_interrupt_time = 0;
@@ -217,19 +211,24 @@ void bottle_interrupt_handler(){
 } 
 
 
-void last_bottle_handler(){
-     static unsigned long last_interrupt_time = 0;
-     unsigned long interrupt_time = millis();
-     Serial.println("I am inside the handler");
+//void last_bottle_handler(){
+//     static unsigned long last_interrupt_time = 0;
+//     unsigned long interrupt_time = millis();
+//     Serial.println("I am inside the handler");
  
      // If interrupts come faster than 500ms, assume it's a bounce and ignore
-     if (interrupt_time - last_interrupt_time > 500)
-     {
-       increase_last_count();
-     }
-     last_interrupt_time = interrupt_time;
-} 
+//     if (interrupt_time - last_interrupt_time > 500)
+//     {
+//       increase_last_count();
+//     }
+//     last_interrupt_time = interrupt_time;
+//} 
 
+//void increase_last_count(){
+//    lastBottleCounter ++;
+//    Serial.println(BottleCounter);
+
+//}
  
  Actuator actuator=Actuator(pinactuator);
 
@@ -239,6 +238,7 @@ void last_bottle_handler(){
  Filler filler=Filler(head1,head2, FillerVertical);
  
  Bottle_detector first_bottle_detector=Bottle_detector(SensorFirstBottle);
+ Bottle_detector last_bottle_detector=Bottle_detector(SensorLastBottle);
  Conveyor conveyor=Conveyor(pinConveyor);
 
  
@@ -248,19 +248,16 @@ void setup() {
 
   pinMode(pinactuator, OUTPUT);
 
-  pinMode(SensorLastBottle, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(SensorLastBottle), bottle_interrupt_handler, CHANGE);
+  pinMode(SensorCounterBottle, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(SensorCounterBottle), bottle_interrupt_handler, CHANGE);
 
   //pinMode(SensorLastBottle, INPUT_PULLUP);
   //attachInterrupt(digitalPinToInterrupt(SensorLastBottle), last_bottle_handler, CHANGE);
+  
   conveyor.on();
-
   actuator.close();
-  delay(3000); 
- 
   filler.up();
   lastBottleCounter = 0;
-
   Serial.println("set up finished");
   
 }
@@ -271,8 +268,9 @@ void loop() {
   Serial.println("BOTTLE #");
   Serial.println(BottleCounter);
  
-  delay (1000);
-  if(BottleCounter == BottlesInFiller ){
+  if(BottleCounter == BottlesInFiller && first_bottle_detector.is_bottle() == 1 && last_bottle_detector.is_bottle() == 1){
+
+    
     Serial.println(BottleCounter);
    
     delay(2000);
@@ -291,5 +289,5 @@ void loop() {
 
   }
 
-  Serial.println(BottleCounter);
+
 }
