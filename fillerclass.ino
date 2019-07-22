@@ -208,7 +208,7 @@ enum States
 };
 
  //at power up, we will start out in this machine state (mState)
-byte mState = 1;
+/*byte mState = 1;
 
 void StateMachine(){
    Serial.println("state");
@@ -335,6 +335,9 @@ void StateMachine(){
 
   } 
 } 
+*/
+
+
 
  
  Actuator actuator=Actuator(pinactuator);
