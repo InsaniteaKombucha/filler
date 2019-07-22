@@ -208,7 +208,7 @@ enum States
 };
 
  //at power up, we will start out in this machine state (mState)
- States mState = StateStart;
+byte mState = 1;
 
 void StateMachine(){
    Serial.println("state");
@@ -219,22 +219,20 @@ void StateMachine(){
 
      unsigned long start_millis_filler_down;
 
-    case StateStart:
+    case 1:
       int FirstCycle = 1;
       Serial.println("State machine 1");
-      mState = FillerDown; //now switching to State1
+      mState = 2; //now switching to State1
       break;      
       
-    case StopConveyor:
-      
-      // close_Actuator();
-      //  conveyor.stop();
-         Serial.println("conveyor off");  
+    case 2:
+      Serial.println("State machine 1");
+      Serial.println("conveyor off");  
          start_millis_filler_down = millis();
-         mState = FillerDown; 
+         mState = 3; 
         break;
       
-    case FillerDown:  
+    case 3:  
       unsigned long current_millis_filler_down = millis(); 
 
          Serial.println(current_millis_filler_down);
@@ -332,6 +330,7 @@ void StateMachine(){
 
     default:
       // default code goes here
+      mState = 1;
       break;
 
   } 
@@ -369,17 +368,16 @@ void setup() {
 
 void loop() {  
   // put your main code here, to run repeatedly:
-  States mState = StateStart;
 
 //  Serial.println("BOTTLE #");
   Serial.println(BottleCounter);
  
 //  if(BottleCounter == BottlesInFiller && first_bottle_detector.is_bottle() == 1 && last_bottle_detector.is_bottle() == 1){
 
-  if(BottleCounter == BottlesInFiller){
+//  if(BottleCounter == BottlesInFiller){
 
      StateMachine(); 
-     Serial.println("inside the loop");
+//     Serial.println("inside the loop");
   
-  }
+ // }
 }
