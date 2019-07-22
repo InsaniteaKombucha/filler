@@ -9,6 +9,10 @@ int BottlesInFiller = 3;
 //const byte SensorCounterPin = A3;
 byte pinConveyor = 3;
 
+static unsigned long start_millis_filler_down = 0;
+static unsigned long last_interrupt_time = 0;
+static unsigned long buch_timer_head1 = 0;
+
 byte pinactuator = 13 ;
 
 byte pinc02_1 = 8 ;
@@ -177,25 +181,6 @@ class Actuator {
 };
 
 
-void start_cycle_heads(Head head1, Head head2){
-
-    head1.c02on();
-    head2.c02on();
-    Serial.println("c02 ofn");
-    delay(2000);
-    head1.c02off();
-    head2.c02off();
-    Serial.println("c02 off");
-    head1.buchon();
-    head2.buchon();
-    Serial.println("buch on");
-    delay(15000);
-    head1.buchoff();
-    head2.buchoff();
-    Serial.println("buch off");
-  
-}
-
 void increase_count(){
     BottleCounter ++;
 }
@@ -211,26 +196,147 @@ void bottle_interrupt_handler(){
     }
     last_interrupt_time = interrupt_time;
 } 
-
-
-//void last_bottle_handler(){
-//     static unsigned long last_interrupt_time = 0;
-//     unsigned long interrupt_time = millis();
-//     Serial.println("I am inside the handler");
  
-     // If interrupts come faster than 500ms, assume it's a bounce and ignore
-//     if (interrupt_time - last_interrupt_time > 500)
-//     {
-//       increase_last_count();
-//     }
-//     last_interrupt_time = interrupt_time;
-//} 
+ void close_Actuator(){
 
-//void increase_last_count(){
-//    lastBottleCounter ++;
-//    Serial.println(BottleCounter);
+ }
 
-//}
+
+enum States
+{
+  StateStart, StopConveyor, FillerDown, Openc02_head1, Openc02_head2, Openc02_head3, Closec02_head1, Closec02_head2, Closec02_head3, Opencbuch_head1, Opencbuch_head2, Openbuch_head3, Closebuch_head1, Closebuch_head2, Closebuch_head3,   FillerUp, ActuatorOpen, ActuatorClose, StartConveyor
+};
+
+ //at power up, we will start out in this machine state (mState)
+ States mState = StateStart;
+
+void StateMachine(){
+   Serial.println("state");
+   Serial.println(mState);
+
+  switch (mState)
+  {
+
+     unsigned long start_millis_filler_down;
+
+    case StateStart:
+      int FirstCycle = 1;
+      Serial.println("State machine 1");
+      mState = FillerDown; //now switching to State1
+      break;      
+      
+    case StopConveyor:
+      
+      // close_Actuator();
+      //  conveyor.stop();
+         Serial.println("conveyor off");  
+         start_millis_filler_down = millis();
+         mState = FillerDown; 
+        break;
+      
+    case FillerDown:  
+      unsigned long current_millis_filler_down = millis(); 
+
+         Serial.println(current_millis_filler_down);
+         Serial.println(start_millis_filler_down);
+      if (current_millis_filler_down - start_millis_filler_down > 2000)
+      {
+//        filler.down();
+           Serial.println("filler down");  
+           mState = Openc02_head1;
+      }     
+
+      break;
+    case Openc02_head1:
+
+     if (FirstCycle)
+      {   Serial.println("open c02");  
+//        head1.Closec02();
+        static unsigned long last_interrupt_time = millis();
+        mState = Closec02_head1;
+      } 
+            
+    case Closec02_head1:
+
+      unsigned long interrupt_time = millis();
+
+      if (interrupt_time - last_interrupt_time > 1000)
+      {
+//        head1.closec02();
+        last_interrupt_time = interrupt_time; 
+        Serial.println("close c02");
+        mState = Opencbuch_head1;
+     
+      }
+
+      break;
+     
+     
+    case Opencbuch_head1:
+      if (FirstCycle)
+      {
+//      head1.openbuch();
+        static unsigned long buch_timer_head1 = millis();
+        Serial.println("open buch");
+        mState = Closebuch_head1;  
+      }
+      
+     
+    case Closebuch_head1:
+      
+      unsigned long buch_filling = millis();
+
+      if (buch_filling - buch_timer_head1 > 10000)
+      {
+//        head1.closec02();
+          Serial.println("close buch");
+          mState = FillerUp;  
+      }
+       
+      
+     
+    case FillerUp:
+      static unsigned long start_millis = 0;
+      unsigned long current_millis = millis();    
+      if (current_millis - start_millis > 2000)
+      {
+         Serial.println("filler up");  
+         mState = ActuatorOpen;
+      }                   
+     
+     
+    case ActuatorOpen:
+      if (1)
+      {
+           Serial.println("actuator open");  
+//        actuator.open();
+      }                   
+      mState = StartConveyor;
+     
+    case StartConveyor:
+      if (1)
+      {
+      // conveyor.stop();
+      }                   
+      mState = ActuatorClose;
+      break;  
+
+    case ActuatorClose:
+      if (1)
+      {   
+           Serial.println("actuator close");  
+//        actuator.close();
+      }                   
+      mState = StateStart;
+      break;  
+
+    default:
+      // default code goes here
+      break;
+
+  } 
+} 
+
  
  Actuator actuator=Actuator(pinactuator);
 
@@ -252,9 +358,6 @@ void setup() {
 
   pinMode(SensorCounterBottle, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(SensorCounterBottle), bottle_interrupt_handler, CHANGE);
-
-  //pinMode(SensorLastBottle, INPUT_PULLUP);
-  //attachInterrupt(digitalPinToInterrupt(SensorLastBottle), last_bottle_handler, CHANGE);
   
   conveyor.on();
   actuator.close();
@@ -266,30 +369,17 @@ void setup() {
 
 void loop() {  
   // put your main code here, to run repeatedly:
+  States mState = StateStart;
 
-  Serial.println("BOTTLE #");
+//  Serial.println("BOTTLE #");
   Serial.println(BottleCounter);
  
-  if(BottleCounter == BottlesInFiller && first_bottle_detector.is_bottle() == 1 && last_bottle_detector.is_bottle() == 1){
+//  if(BottleCounter == BottlesInFiller && first_bottle_detector.is_bottle() == 1 && last_bottle_detector.is_bottle() == 1){
 
-    
-    Serial.println(BottleCounter);
-   
-    delay(2000);
-    conveyor.off();
-    filler.down();
-    start_cycle_heads(head1, head2);
-    filler.up();
-    actuator.open();
-    delay(500);
-    conveyor.on(); 
-    delay(2000);
-    actuator.close();
-    delay(2000);
-    BottleCounter = 0;  
-    lastBottleCounter=0;
+  if(BottleCounter == BottlesInFiller){
 
+     StateMachine(); 
+     Serial.println("inside the loop");
+  
   }
-
-
 }
